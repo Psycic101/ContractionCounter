@@ -14,6 +14,8 @@ class ContractionViewModel(application: Application) : AndroidViewModel(applicat
 
     val allContractions: LiveData<List<Contraction>>
 
+    var currentContraction: Contraction? = null
+
     init {
         val contractionDao = ContractionDatabase.getDatabase(application).contractionDao()
         repository = ContractionRepository(contractionDao)
@@ -30,5 +32,17 @@ class ContractionViewModel(application: Application) : AndroidViewModel(applicat
 
     fun delete(contraction: Contraction) = viewModelScope.launch {
         repository.delete(contraction)
+    }
+
+    fun getContractionById(id: Int) = viewModelScope.launch {
+        currentContraction = repository.getContractionById(id)
+    }
+
+    fun deleteAllContractions() = viewModelScope.launch {
+        repository.deleteAllContractions()
+    }
+    
+    fun endOpenContraction(contractionEndDt: Long) = viewModelScope.launch {
+        repository.endOpenContraction(contractionEndDt)
     }
 }

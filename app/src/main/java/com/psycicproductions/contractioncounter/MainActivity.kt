@@ -1,9 +1,7 @@
 package com.psycicproductions.contractioncounter
 
-import android.content.Context
 import android.icu.text.DateFormat
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -41,7 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -131,9 +129,6 @@ class MainActivity : ComponentActivity() {
 fun ContractionCounterApp() {
     val contractionViewModel: ContractionViewModel = viewModel()
     val contractions by contractionViewModel.allContractions.observeAsState(emptyList())
-    contractions.isEmpty() // placeholder to prevent code cleanup
-    val context = LocalContext.current
-    val testingList = true
 
     Scaffold(
         topBar = {
@@ -144,8 +139,8 @@ fun ContractionCounterApp() {
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    IconButton(
-                        onClick = { deleteAllContractions(context) },
+                    IconButton( // TODO: This should probably show a confirmation dialogue
+                        onClick = { deleteAllContractions(contractionViewModel) },
                         colors = IconButtonDefaults.iconButtonColors(
                             contentColor = Color.White
                         )
@@ -164,7 +159,7 @@ fun ContractionCounterApp() {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (contractions.isEmpty() && !testingList) {
+            if (contractions.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -185,21 +180,8 @@ fun ContractionCounterApp() {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (testingList) {
-                        items(50) { index ->
-                            Text(
-                                text = "Item $index",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp)
-                            )
-                        }
-                    } else {
-                        items(contractions) { contraction ->
-                            ContractionItem(
-                                contraction = contraction
-                            )
-                        }
+                    items(contractions) { contraction ->
+                        ContractionItem(contraction = contraction)
                     }
                 }
             }
@@ -210,35 +192,38 @@ fun ContractionCounterApp() {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = { contractionStart(context) },
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50),
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.size(80.dp)
-                ) {
-                    Icon(
-                        imageVector = StartIcon,
-                        contentDescription = "Start",
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-                Button(
-                    onClick = { contractionEnd(context) },
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF44336),
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.size(80.dp)
-                ) {
-                    Icon(
-                        imageVector = StopIcon,
-                        contentDescription = "Stop",
-                        modifier = Modifier.size(48.dp)
-                    )
+                if (canStartContraction(contractions)) {
+                    Button(
+                        onClick = { contractionStart(contractionViewModel) },
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier.size(80.dp)
+                    ) {
+                        Icon(
+                            imageVector = StartIcon,
+                            contentDescription = "Start",
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = { contractionEnd(contractionViewModel) },
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier.size(80.dp)
+                    ) {
+                        Icon(
+                            imageVector = StopIcon,
+                            contentDescription = "Stop",
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
                 }
             }
         }
@@ -247,21 +232,39 @@ fun ContractionCounterApp() {
 
 @Composable
 fun ContractionItem(contraction: Contraction) {
-    TODO("Not yet implemented")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Contraction start: " + formatDate(contraction.contractionStartDt)
+                    + "\r\n"
+                    + "Contraction end: " + formatDate(contraction.contractionEndDt),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+    }
 }
 
-fun contractionStart(context: Context) {
-    Toast.makeText(context, "Contraction Started!", Toast.LENGTH_SHORT).show()
+fun contractionStart(viewModel: ContractionViewModel) {
+    viewModel.insert(Contraction(contractionStartDt = System.currentTimeMillis()))
 }
 
-fun contractionEnd(context: Context) {
-    Toast.makeText(context, "Contraction Ended!", Toast.LENGTH_SHORT).show()
+fun contractionEnd(viewModel: ContractionViewModel) {
+    viewModel.endOpenContraction(System.currentTimeMillis())
 }
 
-fun deleteAllContractions(context: Context) {
-    Toast.makeText(context, "All Contractions Deleted!", Toast.LENGTH_SHORT).show()
+fun deleteAllContractions(viewModel: ContractionViewModel) {
+    viewModel.deleteAllContractions()
 }
 
-fun formatDate(timestamp: Long, dateFormat: DateFormat = GlobalDateFormat): String {
-    return dateFormat.format(Date(timestamp))
+fun canStartContraction(contractions: List<Contraction>): Boolean {
+    return contractions.isEmpty() || !contractions.any { it.contractionEndDt == null }
+}
+
+fun formatDate(timestamp: Long?, dateFormat: DateFormat = GlobalDateFormat): String {
+    return if (timestamp == null) "" else dateFormat.format(Date(timestamp))
 }
