@@ -16,4 +16,16 @@ class ContractionRepository(private val contractionDao: ContractionDao) {
     suspend fun delete(contraction: Contraction) {
         contractionDao.deleteContraction(contraction)
     }
+
+    suspend fun getContractionById(id: Int): Contraction? {
+        return contractionDao.getContractionById(id)
+    }
+
+    suspend fun deleteAllContractions() {
+        contractionDao.deleteAllContractions()
+    }
+
+    suspend fun endOpenContraction(contractionEndDt: Long) {
+        contractionDao.endOpenContraction(contractionEndDt)
+    }
 }

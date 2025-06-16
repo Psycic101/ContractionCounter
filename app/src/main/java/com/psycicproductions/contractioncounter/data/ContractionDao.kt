@@ -9,7 +9,7 @@ import androidx.room.Update
 
 @Dao
 interface ContractionDao {
-    @Query("SELECT * FROM contractions ORDER BY contractionStartDt")
+    @Query("SELECT * FROM contractions ORDER BY contractionStartDt DESC")
     fun getAllContractions(): LiveData<List<Contraction>>
 
     @Insert
@@ -23,4 +23,10 @@ interface ContractionDao {
 
     @Query("SELECT * FROM contractions WHERE id = :id")
     suspend fun getContractionById(id: Int): Contraction?
+
+    @Query("DELETE FROM contractions")
+    suspend fun deleteAllContractions()
+
+    @Query("UPDATE contractions SET contractionEndDt = :contractionEndDt WHERE contractionEndDt IS NULL")
+    suspend fun endOpenContraction(contractionEndDt: Long)
 }

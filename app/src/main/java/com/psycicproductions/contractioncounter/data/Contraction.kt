@@ -8,5 +8,5 @@ data class Contraction(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val contractionStartDt: Long,
-    val contractionEndDt: Long
+    val contractionEndDt: Long? = null
 )
