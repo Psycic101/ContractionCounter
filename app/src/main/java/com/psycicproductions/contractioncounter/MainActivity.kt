@@ -128,7 +128,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ContractionCounterApp() {
     val contractionViewModel: ContractionViewModel = viewModel()
-    val contractions by contractionViewModel.allContractions.observeAsState(emptyList())
+    val contractions: List<Contraction> by contractionViewModel.allContractions.observeAsState(
+        emptyList()
+    )
+    val currentContraction: Contraction? by contractionViewModel.currentContraction.observeAsState()
 
     Scaffold(
         topBar = {
@@ -192,7 +195,7 @@ fun ContractionCounterApp() {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (canStartContraction(contractions)) {
+                if (canStartContraction(currentContraction)) {
                     Button(
                         onClick = { contractionStart(contractionViewModel) },
                         shape = CircleShape,
@@ -261,8 +264,8 @@ fun deleteAllContractions(viewModel: ContractionViewModel) {
     viewModel.deleteAllContractions()
 }
 
-fun canStartContraction(contractions: List<Contraction>): Boolean {
-    return contractions.isEmpty() || !contractions.any { it.contractionEndDt == null }
+fun canStartContraction(contraction: Contraction?): Boolean {
+    return contraction == null
 }
 
 fun formatDate(timestamp: Long?, dateFormat: DateFormat = GlobalDateFormat): String {

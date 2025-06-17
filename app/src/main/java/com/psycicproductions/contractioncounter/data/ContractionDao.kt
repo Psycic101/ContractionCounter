@@ -29,4 +29,7 @@ interface ContractionDao {
 
     @Query("UPDATE contractions SET contractionEndDt = :contractionEndDt WHERE contractionEndDt IS NULL")
     suspend fun endOpenContraction(contractionEndDt: Long)
+
+    @Query("SELECT * FROM contractions WHERE contractionEndDt IS NULL")
+    fun getCurrentContraction(): LiveData<Contraction?>
 }

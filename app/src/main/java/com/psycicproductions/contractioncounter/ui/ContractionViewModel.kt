@@ -14,12 +14,13 @@ class ContractionViewModel(application: Application) : AndroidViewModel(applicat
 
     val allContractions: LiveData<List<Contraction>>
 
-    var currentContraction: Contraction? = null
+    val currentContraction: LiveData<Contraction?>
 
     init {
         val contractionDao = ContractionDatabase.getDatabase(application).contractionDao()
         repository = ContractionRepository(contractionDao)
         allContractions = repository.allContractions
+        currentContraction = repository.currentContraction
     }
 
     fun insert(contraction: Contraction) = viewModelScope.launch {
@@ -34,14 +35,14 @@ class ContractionViewModel(application: Application) : AndroidViewModel(applicat
         repository.delete(contraction)
     }
 
-    fun getContractionById(id: Int) = viewModelScope.launch {
-        currentContraction = repository.getContractionById(id)
+    suspend fun getContractionById(id: Int): Contraction? {
+        return repository.getContractionById(id)
     }
 
     fun deleteAllContractions() = viewModelScope.launch {
         repository.deleteAllContractions()
     }
-    
+
     fun endOpenContraction(contractionEndDt: Long) = viewModelScope.launch {
         repository.endOpenContraction(contractionEndDt)
     }
