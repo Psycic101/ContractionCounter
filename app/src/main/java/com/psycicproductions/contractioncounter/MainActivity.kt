@@ -31,8 +31,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +51,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.psycicproductions.contractioncounter.data.Contraction
 import com.psycicproductions.contractioncounter.ui.ContractionViewModel
 import com.psycicproductions.contractioncounter.ui.theme.ContractionCounterTheme
+import kotlinx.coroutines.delay
 import java.util.Date
 
 private val GlobalDateFormat: DateFormat =
@@ -128,7 +134,34 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ContractionCounterApp() {
     val contractionViewModel: ContractionViewModel = viewModel()
-    val contractions by contractionViewModel.allContractions.observeAsState(emptyList())
+    val contractions: List<Contraction> by contractionViewModel.allContractions.observeAsState(
+        emptyList()
+    )
+    val currentContraction: Contraction? by contractionViewModel.currentContraction.observeAsState()
+
+    var isRunning: Boolean by remember { mutableStateOf(false) }
+    var timeElapsed: Long by remember { mutableLongStateOf(0L) }
+    var startTime: Long by remember { mutableLongStateOf(0L) }
+
+    // TODO: Investigate issue where deleting all contractions doesn't happen instantly
+    //       This results in the timer not zeroing out correctly
+    val latestContractionTime: Long? = contractions.maxByOrNull { it.contractionStartDt }
+        ?.let { item -> maxOf(item.contractionStartDt, item.contractionEndDt ?: 0) }
+
+    if (latestContractionTime != null) {
+        timeElapsed = System.currentTimeMillis() - latestContractionTime
+        isRunning = true
+    }
+
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            startTime = System.currentTimeMillis() - timeElapsed
+            while (isRunning) {
+                timeElapsed = System.currentTimeMillis() - startTime
+                delay(10L)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -140,7 +173,12 @@ fun ContractionCounterApp() {
                 ),
                 actions = {
                     IconButton( // TODO: This should probably show a confirmation dialogue
-                        onClick = { deleteAllContractions(contractionViewModel) },
+                        onClick = {
+                            deleteAllContractions(contractionViewModel)
+                            isRunning = false
+                            startTime = 0L
+                            timeElapsed = 0L
+                        },
                         colors = IconButtonDefaults.iconButtonColors(
                             contentColor = Color.White
                         )
@@ -159,6 +197,18 @@ fun ContractionCounterApp() {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatTime(timeElapsed),
+                    style = MaterialTheme.typography.headlineLarge
+                )
+            }
             if (contractions.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -192,9 +242,14 @@ fun ContractionCounterApp() {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (canStartContraction(contractions)) {
+                if (canStartContraction(currentContraction)) {
                     Button(
-                        onClick = { contractionStart(contractionViewModel) },
+                        onClick = {
+                            contractionStart(contractionViewModel)
+                            timeElapsed = 0L
+                            startTime = System.currentTimeMillis()
+                            isRunning = true
+                        },
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50),
@@ -210,7 +265,11 @@ fun ContractionCounterApp() {
                     }
                 } else {
                     Button(
-                        onClick = { contractionEnd(contractionViewModel) },
+                        onClick = {
+                            contractionEnd(contractionViewModel)
+                            timeElapsed = 0L
+                            startTime = System.currentTimeMillis()
+                        },
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFF44336),
@@ -261,10 +320,19 @@ fun deleteAllContractions(viewModel: ContractionViewModel) {
     viewModel.deleteAllContractions()
 }
 
-fun canStartContraction(contractions: List<Contraction>): Boolean {
-    return contractions.isEmpty() || !contractions.any { it.contractionEndDt == null }
+fun canStartContraction(contraction: Contraction?): Boolean {
+    return contraction == null
 }
 
 fun formatDate(timestamp: Long?, dateFormat: DateFormat = GlobalDateFormat): String {
     return if (timestamp == null) "" else dateFormat.format(Date(timestamp))
+}
+
+fun formatTime(milliseconds: Long): String {
+    val totalSeconds = milliseconds / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    val centiseconds = (milliseconds % 1000) / 10
+
+    return "${"%02d".format(minutes)}:${"%02d".format(seconds)}.${"%02d".format(centiseconds)}"
 }

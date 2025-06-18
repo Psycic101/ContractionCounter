@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 
 class ContractionRepository(private val contractionDao: ContractionDao) {
     val allContractions: LiveData<List<Contraction>> = contractionDao.getAllContractions()
+    val currentContraction: LiveData<Contraction?> = contractionDao.getCurrentContraction()
 
     suspend fun insert(contraction: Contraction) {
         contractionDao.insertContraction(contraction)
